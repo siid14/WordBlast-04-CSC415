@@ -13,7 +13,7 @@ char *delim = "\"\'.“”‘’?:;-,—*($%)! \t\n\x0A\r";
 int main(int argc, char *argv[])
 {
     // * LOOK FOR ARGUMENTS
-    // check if user enter the correct nnumbers of arguments
+    // check if user enter the correct numbers of arguments
     if (argc != 3)
     {
         fprintf(stderr, "Usage: %s <FileName> <ThreadCount>\n", argv[0]);
