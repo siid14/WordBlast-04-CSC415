@@ -10,6 +10,30 @@
 // You may find this Useful
 char *delim = "\"\'.“”‘’?:;-,—*($%)! \t\n\x0A\r";
 
+//  mutex for thread synchronization
+pthread_mutex_t mutex;
+
+// structure to hold word counts
+typedef struct
+{
+    char word[100];
+    int count;
+} WordCount;
+
+// function to count and tally words in a file segment
+void *countWords(void *arg)
+{
+    // thread-specific code to count words
+    // make sure to lock the mutex before updating shared data structures
+
+    pthread_mutex_lock(&mutex);
+    // perform word counting and tallying here
+
+    pthread_mutex_unlock(&mutex);
+
+    pthread_exit(NULL);
+}
+
 int main(int argc, char *argv[])
 {
     // * LOOK FOR ARGUMENTS
@@ -46,8 +70,13 @@ int main(int argc, char *argv[])
     off_t segmentSize = fileSize / threadCount;
     printf("Size for each thread: %lld\n", (long long)segmentSize);
 
-    //***TO DO***  Look at arguments, open file, divide by threads
-    //             Allocate and Initialize and storage structures
+    // initialize the mutex
+    pthread_mutex_init(&mutex, NULL);
+
+    // create an array to hold thread IDs
+    pthread_t threads[threadCount];
+
+    // TODO: allocate and Initialize and storage structures
 
     //**************************************************************
     // DO NOT CHANGE THIS BLOCK
@@ -57,10 +86,22 @@ int main(int argc, char *argv[])
 
     clock_gettime(CLOCK_REALTIME, &startTime);
     //**************************************************************
-    // *** TO DO ***  start your thread processing
-    //                wait for the threads to finish
+    // TODO: start your thread processing
+    printf("--- START CREATE & START THREADS ---\n");
+    // create and start threads
+    for (int i = 0; i < threadCount; i++)
+    {
+        // pthread_create(&threads[i], NULL, countWords, );
+    }
+    printf("--- END CREATE & START THREADS ---\n");
 
-    // ***TO DO *** Process TOP 10 and display
+    // wait for the threads to finish
+    for (int i = 0; i < threadCount; i++)
+    {
+        // pthread_join(threads[i], ...);
+    }
+
+    // TODO: Process TOP 10 and display
 
     //**************************************************************
     // DO NOT CHANGE THIS BLOCK
@@ -79,4 +120,5 @@ int main(int argc, char *argv[])
 
     // ***TO DO *** cleanup
     close(fileDescriptor);
+    pthread_mutex_destroy(&mutex);
 }
