@@ -20,9 +20,18 @@ typedef struct
     int count;
 } WordCount;
 
+// * pointer of the data for the threads to process
+// structure to hold thread-specific data
+typedef struct
+{
+    int fileDescriptor;
+    off_t segmentSize;
+} ThreadData;
+
 // function to count and tally words in a file segment
 void *countWords(void *arg)
 {
+    ThreadData *threadData = (ThreadData *)arg;
     // thread-specific code to count words
     // make sure to lock the mutex before updating shared data structures
 
@@ -36,7 +45,7 @@ void *countWords(void *arg)
 
 int main(int argc, char *argv[])
 {
-    // * LOOK FOR ARGUMENTS
+    // * ARGUMENTS VALIDATION
     // check if user enter the correct numbers of arguments
     if (argc != 3)
     {
@@ -48,7 +57,7 @@ int main(int argc, char *argv[])
     char *fileName = argv[1];
     int threadCount = atoi(argv[2]);
 
-    // * OPEN FILE
+    // * FILE OPENING
     printf("--- START READING FILE ---\n");
     // open the file
     int fileDescriptor = open(fileName, O_RDONLY);
@@ -59,7 +68,7 @@ int main(int argc, char *argv[])
     }
     printf("--- END READING FILE ---\n");
 
-    // * DIVIDE BY THREADS
+    // * FILE SIZE & THREAD SEGMENTATION
     // determine the file size
     off_t fileSize = lseek(fileDescriptor, 0, SEEK_END);
     printf("Size of the file: %lld\n", (long long)fileSize);
@@ -73,10 +82,8 @@ int main(int argc, char *argv[])
     // initialize the mutex
     pthread_mutex_init(&mutex, NULL);
 
-    // create an array to hold thread IDs
+    // array to hold thread IDs
     pthread_t threads[threadCount];
-
-    // TODO: allocate and Initialize and storage structures
 
     //**************************************************************
     // DO NOT CHANGE THIS BLOCK
@@ -86,21 +93,29 @@ int main(int argc, char *argv[])
 
     clock_gettime(CLOCK_REALTIME, &startTime);
     //**************************************************************
-    // TODO: start your thread processing
+
+    // * THREADS CREATION & EXECUTION
+    ThreadData *threadDataArray = malloc(threadCount * sizeof(ThreadData));
+
     printf("--- START CREATE & START THREADS ---\n");
     // create and start threads
     for (int i = 0; i < threadCount; i++)
     {
-        // pthread_create(&threads[i], NULL, countWords, );
+        threadDataArray[i].fileDescriptor = fileDescriptor;
+        threadDataArray[i].segmentSize = segmentSize;
+        pthread_create(&threads[i], NULL, countWords, &threadDataArray[i]);
     }
     printf("--- END CREATE & START THREADS ---\n");
 
+    printf("--- START WAIT THREADS TO FINISH ---\n");
     // wait for the threads to finish
     for (int i = 0; i < threadCount; i++)
     {
-        // pthread_join(threads[i], ...);
+        pthread_join(threads[i], NULL);
     }
+    printf("--- END WAIT THREADS TO FINISH ---\n");
 
+    // * DISPLAY TOP 10 WORDS
     // TODO: Process TOP 10 and display
 
     //**************************************************************
@@ -118,7 +133,8 @@ int main(int argc, char *argv[])
     printf("Total Time was %ld.%09ld seconds\n", sec, n_sec);
     //**************************************************************
 
-    // ***TO DO *** cleanup
+    // * FREE ALLOCATED MEMORY
     close(fileDescriptor);
     pthread_mutex_destroy(&mutex);
+    free(threadDataArray);
 }
