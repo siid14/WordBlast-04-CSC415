@@ -13,6 +13,7 @@ char *delim = "\"\'.“”‘’?:;-,—*($%)! \t\n\x0A\r";
 //  mutex for thread synchronization
 pthread_mutex_t mutex;
 
+// * DATA STRUCTURE
 // structure to hold word counts
 typedef struct
 {
@@ -20,7 +21,6 @@ typedef struct
     int count;
 } WordCount;
 
-// * pointer of the data for the threads to process
 // structure to hold thread-specific data
 typedef struct
 {
@@ -28,16 +28,18 @@ typedef struct
     off_t segmentSize;
 } ThreadData;
 
+// * FUNCTION
 // function to count and tally words in a file segment
 void *countWords(void *arg)
 {
     ThreadData *threadData = (ThreadData *)arg;
-    // thread-specific code to count words
-    // make sure to lock the mutex before updating shared data structures
 
+    // lock mutex before any data shared
     pthread_mutex_lock(&mutex);
-    // perform word counting and tallying here
 
+    // TODO: perform word counting and tallying here
+
+    // allow other threads to access shared data
     pthread_mutex_unlock(&mutex);
 
     pthread_exit(NULL);
@@ -101,8 +103,13 @@ int main(int argc, char *argv[])
     // create and start threads
     for (int i = 0; i < threadCount; i++)
     {
+        // ensure thread know which file to read
         threadDataArray[i].fileDescriptor = fileDescriptor;
+
+        // ensure thread know which file segment to process
         threadDataArray[i].segmentSize = segmentSize;
+
+        // create thread to process with countWords function
         pthread_create(&threads[i], NULL, countWords, &threadDataArray[i]);
     }
     printf("--- END CREATE & START THREADS ---\n");
@@ -116,7 +123,7 @@ int main(int argc, char *argv[])
     printf("--- END WAIT THREADS TO FINISH ---\n");
 
     // * DISPLAY TOP 10 WORDS
-    // TODO: Process TOP 10 and display
+    // TODO: process TOP 10 and display
 
     //**************************************************************
     // DO NOT CHANGE THIS BLOCK
