@@ -57,18 +57,21 @@ int main(int argc, char *argv[])
 
     // parse command-line arguments
     char *fileName = argv[1];
+    printf("File Name: %s\n", fileName);
     int threadCount = atoi(argv[2]);
+    printf("Thread Count: %d\n", threadCount);
 
     // * FILE OPENING
     printf("--- START READING FILE ---\n");
     // open the file
     int fileDescriptor = open(fileName, O_RDONLY);
+    printf("File Descriptor: %d\n", fileDescriptor);
     if (fileDescriptor == -1)
     {
         perror("Failed to open file");
         exit(EXIT_FAILURE);
     }
-    printf("--- END READING FILE ---\n");
+    printf("--- END READING FILE ---\n\n");
 
     // * FILE SIZE & THREAD SEGMENTATION
     // determine the file size
@@ -79,7 +82,7 @@ int main(int argc, char *argv[])
 
     // calculate the segment size for each thread
     off_t segmentSize = fileSize / threadCount;
-    printf("Size for each thread: %lld\n", (long long)segmentSize);
+    printf("Size for each thread: %lld\n\n", (long long)segmentSize);
 
     // initialize the mutex
     pthread_mutex_init(&mutex, NULL);
@@ -105,14 +108,16 @@ int main(int argc, char *argv[])
     {
         // ensure thread know which file to read
         threadDataArray[i].fileDescriptor = fileDescriptor;
+        printf("Thread[%d].fileDescriptor: %d\n", i, fileDescriptor);
 
         // ensure thread know which file segment to process
         threadDataArray[i].segmentSize = segmentSize;
+        printf("Thread[%d].segmentSize: %lld\n", i, (long long)segmentSize);
 
         // create thread to process with countWords function
         pthread_create(&threads[i], NULL, countWords, &threadDataArray[i]);
     }
-    printf("--- END CREATE & START THREADS ---\n");
+    printf("--- END CREATE & START THREADS ---\n\n");
 
     printf("--- START WAIT THREADS TO FINISH ---\n");
     // wait for the threads to finish
@@ -120,7 +125,7 @@ int main(int argc, char *argv[])
     {
         pthread_join(threads[i], NULL);
     }
-    printf("--- END WAIT THREADS TO FINISH ---\n");
+    printf("--- END WAIT THREADS TO FINISH ---\n\n");
 
     // * DISPLAY TOP 10 WORDS
     // TODO: process TOP 10 and display
