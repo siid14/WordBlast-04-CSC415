@@ -36,7 +36,7 @@ typedef struct
     off_t segmentSize;
 } ThreadData;
 
-// * FUNCTION
+// * FUNCTIONS
 // function to count and tally words in a file segment
 void *countWords(void *arg)
 {
@@ -82,7 +82,7 @@ void *countWords(void *arg)
 
     // print the new file pointer position after reading
     currentPos = lseek(fileDescriptor, 0, SEEK_CUR);
-    printf("Thread %d new file pointer position: %lld\n", threadIndex, (long long)currentPos);
+    printf("Thread %d new file pointer position: %lld\n\n", threadIndex, (long long)currentPos);
 
     if (bytesRead < 0)
     {
