@@ -34,6 +34,7 @@ typedef struct
     int fileDescriptor;
     int threadIndex;
     off_t segmentSize;
+    char *buffer; // add a buffer for strtok_r
 } ThreadData;
 
 // * FUNCTIONS
@@ -44,6 +45,7 @@ void *countWords(void *arg)
     int fileDescriptor = threadData->fileDescriptor;
     int threadIndex = threadData->threadIndex;
     off_t segmentSize = threadData->segmentSize;
+    char *buffer = threadData->buffer; // Get the buffer from the threadData
 
     printf("Thread %d started\n", threadIndex);
 
@@ -62,23 +64,7 @@ void *countWords(void *arg)
     printf("Thread %d seeked to position : %lld\n\n", threadIndex, (long long)startPosition);
 
     // read the assigned portion of the file into a buffer
-    // allocate a buffer of size 'segmentSize' dynamically
-    char *buffer = (char *)malloc(segmentSize);
-    if (buffer == NULL)
-    {
-        perror("Error allocating buffer");
-        pthread_exit(NULL);
-    }
-
-    printf("Segment Size: %lld\n", (long long)segmentSize);
-    printf("Buffer size: %lu\n\n", sizeof(buffer));
-
     ssize_t bytesRead = read(fileDescriptor, buffer, segmentSize);
-    // ! apparently sizeof(buffer) returns the size of the pointer
-    // if (segmentSize > sizeof(buffer))
-    // {
-    //     fprintf(stderr, "Segment size is too large for the buffer.\n");
-    // }
 
     // print the new file pointer position after reading
     currentPos = lseek(fileDescriptor, 0, SEEK_CUR);
@@ -87,9 +73,11 @@ void *countWords(void *arg)
     if (bytesRead < 0)
     {
         perror("Error reading file");
-        free(buffer); // free the buffer if there's an error
         pthread_exit(NULL);
     }
+
+    // printf("Segment Size: %lld\n", (long long)segmentSize);
+    // printf("Buffer size: %lu\n\n", sizeof(buffer));
 
     printf("Thread %d read %zd bytes from file\n", threadIndex, bytesRead);
 
@@ -99,14 +87,16 @@ void *countWords(void *arg)
         fprintf(stderr, "Thread %d: Segment size is larger than bytes read. Expected %lld bytes, but read %zd bytes.\n", threadIndex, (long long)segmentSize, bytesRead);
     }
 
-    // initialize strtok with delimiters
-    char *token = strtok(buffer, delim);
+    // initialize strtok_r with delimiters
+    char *token;
+    char *saveptr;
+
+    token = strtok_r(buffer, delim, &saveptr);
 
     while (token != NULL)
     {
         printf("Thread %d: Token: %s\n", threadIndex, token);
 
-        // TODO: check if 'token' has 6 or more characters and update word counts accordingly
         if (strlen(token) >= 6)
         {
             printf("Thread %d -- %s has 6 characters or more\n", threadIndex, token);
@@ -140,10 +130,8 @@ void *countWords(void *arg)
         }
 
         // get the next token
-        token = strtok(NULL, delim);
+        token = strtok_r(NULL, delim, &saveptr);
     }
-
-    free(buffer);
 
     printf("Thread %d completed\n", threadIndex);
 
@@ -231,6 +219,14 @@ int main(int argc, char *argv[])
         // pass the thread index as an argument
         threadDataArray[i].threadIndex = i; // set the thread index
 
+        // allocate a buffer for each thread
+        threadDataArray[i].buffer = (char *)malloc(segmentSize);
+        if (threadDataArray[i].buffer == NULL)
+        {
+            perror("Error allocating buffer");
+            exit(EXIT_FAILURE);
+        }
+
         // create thread to process with countWords function
         pthread_create(&threads[i], NULL, countWords, &threadDataArray[i]);
     }
@@ -246,9 +242,16 @@ int main(int argc, char *argv[])
 
     free(threadDataArray);
 
+    // free buffers after threads finish
+    for (int i = 0; i < threadCount; i++)
+    {
+        free(threadDataArray[i].buffer);
+    }
+
     // sort the wordCount array
     qsort(wordCount, numWords, sizeof(WordCount), compareWordCounts);
 
+    printf("Word Frequency Count on %s with %d threads\n", fileName, threadCount);
     // * DISPLAY TOP 10 WORDS
     for (int i = 0; i < 10; i++)
     {
