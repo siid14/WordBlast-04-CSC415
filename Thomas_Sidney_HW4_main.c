@@ -55,16 +55,31 @@ void *countWords(void *arg)
     // seek to the start position in the file
     lseek(fileDescriptor, startPosition, SEEK_SET);
 
-    printf("Thread %d seeked to position: %lld\n", threadIndex, (long long)startPosition);
+    printf("Thread %d seeked to position : %lld\n", threadIndex, (long long)startPosition);
+    printf("I'm here\n");
 
     // read the assigned portion of the file into a buffer
-    char buffer[segmentSize];
+    // allocate a buffer of size 'segmentSize' dynamically
+    char *buffer = (char *)malloc(segmentSize);
+    if (buffer == NULL)
+    {
+        perror("Error allocating buffer");
+        pthread_exit(NULL);
+    }
+
+    printf("Segment Size: %lld\n", (long long)segmentSize);
+
     ssize_t bytesRead = read(fileDescriptor, buffer, segmentSize);
+    if (segmentSize > sizeof(buffer))
+    {
+        fprintf(stderr, "Segment size is too large for the buffer.\n");
+    }
 
     if (bytesRead < 0)
     {
         perror("Error reading file");
-        // handle the error
+        free(buffer); // free the buffer if there's an error
+        pthread_exit(NULL);
     }
 
     printf("Thread %d read %zd bytes from file\n", threadIndex, bytesRead);
@@ -80,19 +95,38 @@ void *countWords(void *arg)
         if (strlen(token) >= 6)
         {
             printf("Thread %d: Word has 6 characters\n", threadIndex);
+
+            // lock mutex before any data shared
+            pthread_mutex_lock(&mutex);
+
+            // search for 'token' in the wordCount array
+            int found = 0;
+            for (int i = 0; i < numWords; i++)
+            {
+                if (strcmp(wordCount[i].word, token) == 0)
+                {
+                    // 'token' already exists in the array, increment its count
+                    wordCount[i].count++;
+                    found = 1;
+                    break;
+                }
+            }
+
+            // if 'token' is not found in the array, add it
+            if (!found && numWords < MAX_TOTAL_WORDS)
+            {
+                strcpy(wordCount[numWords].word, token);
+                wordCount[numWords].count = 1;
+                numWords++;
+            }
+
+            // unlock the mutex after updating shared data
+            pthread_mutex_unlock(&mutex);
         }
 
         // get the next token
         token = strtok(NULL, delim);
     }
-
-    // lock mutex before any data shared
-    pthread_mutex_lock(&mutex);
-
-    // TODO: perform word counting and tallying here
-
-    // allow other threads to access shared data
-    pthread_mutex_unlock(&mutex);
 
     printf("Thread %d completed\n", threadIndex);
 
