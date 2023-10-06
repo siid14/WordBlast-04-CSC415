@@ -55,8 +55,11 @@ void *countWords(void *arg)
     // seek to the start position in the file
     lseek(fileDescriptor, startPosition, SEEK_SET);
 
-    printf("Thread %d seeked to position : %lld\n", threadIndex, (long long)startPosition);
-    printf("I'm here\n");
+    // Print the current file pointer position before reading
+    off_t currentPos = lseek(fileDescriptor, 0, SEEK_CUR);
+    printf("Thread %d current file pointer position: %lld\n", threadIndex, (long long)currentPos);
+
+    printf("Thread %d seeked to position : %lld\n\n", threadIndex, (long long)startPosition);
 
     // read the assigned portion of the file into a buffer
     // allocate a buffer of size 'segmentSize' dynamically
@@ -68,12 +71,18 @@ void *countWords(void *arg)
     }
 
     printf("Segment Size: %lld\n", (long long)segmentSize);
+    printf("Buffer size: %lu\n\n", sizeof(buffer));
 
     ssize_t bytesRead = read(fileDescriptor, buffer, segmentSize);
-    if (segmentSize > sizeof(buffer))
-    {
-        fprintf(stderr, "Segment size is too large for the buffer.\n");
-    }
+    // ! apparently sizeof(buffer) returns the size of the pointer
+    // if (segmentSize > sizeof(buffer))
+    // {
+    //     fprintf(stderr, "Segment size is too large for the buffer.\n");
+    // }
+
+    // print the new file pointer position after reading
+    currentPos = lseek(fileDescriptor, 0, SEEK_CUR);
+    printf("Thread %d new file pointer position: %lld\n", threadIndex, (long long)currentPos);
 
     if (bytesRead < 0)
     {
@@ -83,6 +92,12 @@ void *countWords(void *arg)
     }
 
     printf("Thread %d read %zd bytes from file\n", threadIndex, bytesRead);
+
+    // Check if the segment size is greater than the bytes actually read
+    if (segmentSize > bytesRead)
+    {
+        fprintf(stderr, "Thread %d: Segment size is larger than bytes read. Expected %lld bytes, but read %zd bytes.\n", threadIndex, (long long)segmentSize, bytesRead);
+    }
 
     // initialize strtok with delimiters
     char *token = strtok(buffer, delim);
@@ -94,7 +109,7 @@ void *countWords(void *arg)
         // TODO: check if 'token' has 6 or more characters and update word counts accordingly
         if (strlen(token) >= 6)
         {
-            printf("Thread %d: Word has 6 characters\n", threadIndex);
+            printf("Thread %d -- %s has 6 characters or more\n", threadIndex, token);
 
             // lock mutex before any data shared
             pthread_mutex_lock(&mutex);
@@ -128,9 +143,20 @@ void *countWords(void *arg)
         token = strtok(NULL, delim);
     }
 
+    free(buffer);
+
     printf("Thread %d completed\n", threadIndex);
 
     pthread_exit(NULL);
+}
+
+// compare function for qsort to sort by word counts in descending order
+int compareWordCounts(const void *a, const void *b)
+{
+    const WordCount *word1 = (const WordCount *)a;
+    const WordCount *word2 = (const WordCount *)b;
+
+    return word2->count - word1->count;
 }
 
 int main(int argc, char *argv[])
@@ -218,14 +244,15 @@ int main(int argc, char *argv[])
     }
     printf("--- END WAIT THREADS TO FINISH ---\n\n");
 
-    // TODO: sort the wordCount array based on word counts
-    // TODO: use qsort
-    // TODO: sort it in descending order so that the top words come first
+    free(threadDataArray);
+
+    // sort the wordCount array
+    qsort(wordCount, numWords, sizeof(WordCount), compareWordCounts);
+
     // * DISPLAY TOP 10 WORDS
-    // TODO: process TOP 10 and display
     for (int i = 0; i < 10; i++)
     {
-        // printf("Number %d is %s with a count of %d\n", i + 1, wordCount[i].word, wordCount[i].count);
+        printf("Word: %s, Count: %d\n", wordCount[i].word, wordCount[i].count);
     }
 
     //**************************************************************
@@ -246,5 +273,4 @@ int main(int argc, char *argv[])
     // * FREE ALLOCATED MEMORY
     close(fileDescriptor);
     pthread_mutex_destroy(&mutex);
-    free(threadDataArray);
 }
