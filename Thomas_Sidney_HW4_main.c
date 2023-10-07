@@ -12,7 +12,7 @@
 #define MAX_WORD_LENGTH 100
 #define MAX_TOTAL_WORDS 100000
 
-// You may find this Useful
+// delimiters for tokenization
 char *delim = "\"\'.“”‘’?:;-,—*($%)! \t\n\x0A\r";
 
 //  mutex for thread synchronization
@@ -27,7 +27,7 @@ typedef struct
 } WordCount;
 
 WordCount wordCount[MAX_TOTAL_WORDS];
-int numWords = 0; // track snumber of words in the wordCount array
+int numWords = 0; // track number of words in the wordCount array
 
 // structure to hold thread-specific data
 typedef struct
@@ -46,7 +46,7 @@ void *countWords(void *arg)
     int fileDescriptor = threadData->fileDescriptor;
     int threadIndex = threadData->threadIndex;
     off_t segmentSize = threadData->segmentSize;
-    char *buffer = threadData->buffer; // Get the buffer from the threadData
+    char *buffer = threadData->buffer;
 
     printf("Thread %d started\n", threadIndex);
 
