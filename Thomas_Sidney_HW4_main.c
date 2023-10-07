@@ -272,12 +272,13 @@ int main(int argc, char *argv[])
 
     // sort the wordCount array
     qsort(wordCount, numWords, sizeof(WordCount), compareWordCounts);
+    printf("numWords : %d\n", numWords);
 
     printf("Word Frequency Count on %s with %d threads\n", fileName, threadCount);
     // * DISPLAY TOP 10 WORDS
     for (int i = 0; i < 10; i++)
     {
-        printf("Word: %s, Count: %d\n", wordCount[i].word, wordCount[i].count);
+        printf("Number %d is %s with a count of %d\n", i + 1, wordCount[i].word, wordCount[i].count);
     }
 
     //**************************************************************
