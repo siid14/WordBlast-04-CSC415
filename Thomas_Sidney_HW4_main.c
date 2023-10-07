@@ -1,3 +1,18 @@
+/**************************************************************
+ * Class:  CSC-415-01 - Fall 2023
+ * Name: Sidney Thomas
+ * Student ID: 918656419
+ * GitHub ID: siid14
+ * Project: Assignment 4 – Word Blast
+ *
+ * File: Thomas_Sidney_HW4_main.c
+ *
+ * Description: This program counts word frequencies in a text file
+ *              using multiple threads and displays the top 10 words
+ *              with 6 characters or more.
+ *
+ **************************************************************/
+
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
