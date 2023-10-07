@@ -7,11 +7,12 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <string.h>
+#include <errno.h>
 
 #define MAX_WORD_LENGTH 100
 #define MAX_TOTAL_WORDS 100000
 
-// You may find this Useful
+// delimiters for tokenization
 char *delim = "\"\'.“”‘’?:;-,—*($%)! \t\n\x0A\r";
 
 //  mutex for thread synchronization
@@ -26,7 +27,7 @@ typedef struct
 } WordCount;
 
 WordCount wordCount[MAX_TOTAL_WORDS];
-int numWords = 0; // track snumber of words in the wordCount array
+int numWords = 0; // track number of words in the wordCount array
 
 // structure to hold thread-specific data
 typedef struct
@@ -41,11 +42,13 @@ typedef struct
 // function to count and tally words in a file segment
 void *countWords(void *arg)
 {
+
+    // extract thread-specific data from the argument
     ThreadData *threadData = (ThreadData *)arg;
     int fileDescriptor = threadData->fileDescriptor;
     int threadIndex = threadData->threadIndex;
     off_t segmentSize = threadData->segmentSize;
-    char *buffer = threadData->buffer; // Get the buffer from the threadData
+    char *buffer = threadData->buffer;
 
     printf("Thread %d started\n", threadIndex);
 
@@ -72,7 +75,7 @@ void *countWords(void *arg)
 
     if (bytesRead < 0)
     {
-        perror("Error reading file");
+        fprintf(stderr, "Error: Failed to read from file: %s\n", strerror(errno));
         pthread_exit(NULL);
     }
 
@@ -87,7 +90,7 @@ void *countWords(void *arg)
         fprintf(stderr, "Thread %d: Segment size is larger than bytes read. Expected %lld bytes, but read %zd bytes.\n", threadIndex, (long long)segmentSize, bytesRead);
     }
 
-    // initialize strtok_r with delimiters
+    // initialize strtok_r with delimiters for tokenisation
     char *token;
     char *saveptr;
 
@@ -135,15 +138,20 @@ void *countWords(void *arg)
 
     printf("Thread %d completed\n", threadIndex);
 
-    pthread_exit(NULL);
+    pthread_exit(NULL); // exit the thread
 }
 
 // compare function for qsort to sort by word counts in descending order
 int compareWordCounts(const void *a, const void *b)
 {
+    // cast the arguments (pointers) to WordCount structures
     const WordCount *word1 = (const WordCount *)a;
     const WordCount *word2 = (const WordCount *)b;
 
+    // compare the counts of the two WordCount structures
+    // and return a negative value if word2 should come before word1
+    // return a positive value if word1 should come before word2
+    // and return 0 if they have equal counts (no change in order)
     return word2->count - word1->count;
 }
 
@@ -170,7 +178,7 @@ int main(int argc, char *argv[])
     printf("File Descriptor: %d\n", fileDescriptor);
     if (fileDescriptor == -1)
     {
-        perror("Failed to open file");
+        fprintf(stderr, "Failed to open file '%s' for reading: %s\n", fileName, strerror(errno));
         exit(EXIT_FAILURE);
     }
     printf("--- END READING FILE ---\n\n");
@@ -188,6 +196,11 @@ int main(int argc, char *argv[])
 
     // initialize the mutex
     pthread_mutex_init(&mutex, NULL);
+    if (pthread_mutex_init(&mutex, NULL) != 0)
+    {
+        fprintf(stderr, "Error: Failed to initialize mutex: %s\n", strerror(errno));
+        exit(EXIT_FAILURE);
+    }
 
     // array to hold thread IDs
     pthread_t threads[threadCount];
@@ -223,12 +236,17 @@ int main(int argc, char *argv[])
         threadDataArray[i].buffer = (char *)malloc(segmentSize);
         if (threadDataArray[i].buffer == NULL)
         {
-            perror("Error allocating buffer");
+            fprintf(stderr, "Error: Failed to allocate memory for buffer in thread %d: %s\n", i, strerror(errno));
             exit(EXIT_FAILURE);
         }
 
         // create thread to process with countWords function
         pthread_create(&threads[i], NULL, countWords, &threadDataArray[i]);
+        if (pthread_create(&threads[i], NULL, countWords, &threadDataArray[i]) != 0)
+        {
+            fprintf(stderr, "Error: Failed to create thread %d: %s\n", i, strerror(errno));
+            exit(EXIT_FAILURE);
+        }
     }
     printf("--- END CREATE & START THREADS ---\n\n");
 
@@ -237,6 +255,10 @@ int main(int argc, char *argv[])
     for (int i = 0; i < threadCount; i++)
     {
         pthread_join(threads[i], NULL);
+        if (pthread_join(threads[i], NULL) != 0)
+        {
+            fprintf(stderr, "Error: Failed to join thread %d: %s\n", i, strerror(errno));
+        }
     }
     printf("--- END WAIT THREADS TO FINISH ---\n\n");
 
@@ -250,12 +272,13 @@ int main(int argc, char *argv[])
 
     // sort the wordCount array
     qsort(wordCount, numWords, sizeof(WordCount), compareWordCounts);
+    printf("numWords : %d\n", numWords);
 
     printf("Word Frequency Count on %s with %d threads\n", fileName, threadCount);
     // * DISPLAY TOP 10 WORDS
     for (int i = 0; i < 10; i++)
     {
-        printf("Word: %s, Count: %d\n", wordCount[i].word, wordCount[i].count);
+        printf("Number %d is %s with a count of %d\n", i + 1, wordCount[i].word, wordCount[i].count);
     }
 
     //**************************************************************
