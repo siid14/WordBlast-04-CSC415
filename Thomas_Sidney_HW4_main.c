@@ -42,6 +42,8 @@ typedef struct
 // function to count and tally words in a file segment
 void *countWords(void *arg)
 {
+
+    // extract thread-specific data from the argument
     ThreadData *threadData = (ThreadData *)arg;
     int fileDescriptor = threadData->fileDescriptor;
     int threadIndex = threadData->threadIndex;
@@ -88,7 +90,7 @@ void *countWords(void *arg)
         fprintf(stderr, "Thread %d: Segment size is larger than bytes read. Expected %lld bytes, but read %zd bytes.\n", threadIndex, (long long)segmentSize, bytesRead);
     }
 
-    // initialize strtok_r with delimiters
+    // initialize strtok_r with delimiters for tokenisation
     char *token;
     char *saveptr;
 
@@ -136,15 +138,20 @@ void *countWords(void *arg)
 
     printf("Thread %d completed\n", threadIndex);
 
-    pthread_exit(NULL);
+    pthread_exit(NULL); // exit the thread
 }
 
 // compare function for qsort to sort by word counts in descending order
 int compareWordCounts(const void *a, const void *b)
 {
+    // cast the arguments (pointers) to WordCount structures
     const WordCount *word1 = (const WordCount *)a;
     const WordCount *word2 = (const WordCount *)b;
 
+    // compare the counts of the two WordCount structures
+    // and return a negative value if word2 should come before word1
+    // return a positive value if word1 should come before word2
+    // and return 0 if they have equal counts (no change in order)
     return word2->count - word1->count;
 }
 
