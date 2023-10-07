@@ -7,6 +7,7 @@
 #include <unistd.h>
 #include <pthread.h>
 #include <string.h>
+#include <errno.h>
 
 #define MAX_WORD_LENGTH 100
 #define MAX_TOTAL_WORDS 100000
@@ -72,7 +73,7 @@ void *countWords(void *arg)
 
     if (bytesRead < 0)
     {
-        perror("Error reading file");
+        fprintf(stderr, "Error: Failed to read from file: %s\n", strerror(errno));
         pthread_exit(NULL);
     }
 
@@ -170,7 +171,7 @@ int main(int argc, char *argv[])
     printf("File Descriptor: %d\n", fileDescriptor);
     if (fileDescriptor == -1)
     {
-        perror("Failed to open file");
+        fprintf(stderr, "Failed to open file '%s' for reading: %s\n", fileName, strerror(errno));
         exit(EXIT_FAILURE);
     }
     printf("--- END READING FILE ---\n\n");
@@ -188,6 +189,11 @@ int main(int argc, char *argv[])
 
     // initialize the mutex
     pthread_mutex_init(&mutex, NULL);
+    if (pthread_mutex_init(&mutex, NULL) != 0)
+    {
+        fprintf(stderr, "Error: Failed to initialize mutex: %s\n", strerror(errno));
+        exit(EXIT_FAILURE);
+    }
 
     // array to hold thread IDs
     pthread_t threads[threadCount];
@@ -223,12 +229,17 @@ int main(int argc, char *argv[])
         threadDataArray[i].buffer = (char *)malloc(segmentSize);
         if (threadDataArray[i].buffer == NULL)
         {
-            perror("Error allocating buffer");
+            fprintf(stderr, "Error: Failed to allocate memory for buffer in thread %d: %s\n", i, strerror(errno));
             exit(EXIT_FAILURE);
         }
 
         // create thread to process with countWords function
         pthread_create(&threads[i], NULL, countWords, &threadDataArray[i]);
+        if (pthread_create(&threads[i], NULL, countWords, &threadDataArray[i]) != 0)
+        {
+            fprintf(stderr, "Error: Failed to create thread %d: %s\n", i, strerror(errno));
+            exit(EXIT_FAILURE);
+        }
     }
     printf("--- END CREATE & START THREADS ---\n\n");
 
@@ -237,6 +248,10 @@ int main(int argc, char *argv[])
     for (int i = 0; i < threadCount; i++)
     {
         pthread_join(threads[i], NULL);
+        if (pthread_join(threads[i], NULL) != 0)
+        {
+            fprintf(stderr, "Error: Failed to join thread %d: %s\n", i, strerror(errno));
+        }
     }
     printf("--- END WAIT THREADS TO FINISH ---\n\n");
 
